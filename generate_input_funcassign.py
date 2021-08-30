@@ -165,8 +165,6 @@ def debug_print_neighbor_genename_one(geneA,cov_matrix,gene_map,whole_RPKM,train
 if __name__ == '__main__':
 
 
-    #function_name = 'cell_cycle'
-    #datadir='/home/comp/jxchen/xuyu/FuncAssign_new/genepair/'+function_name+'_gene_pairs_train.txt'
     datadir= args.genepairs_filepath
     expr_dir = args.expression_filepath
     n_tp = args.n_timepoints
@@ -174,11 +172,9 @@ if __name__ == '__main__':
     save_name = args.save_filename
     shared_known_genes = args.func_geneset_filepath
     G1,G2,Label = load_gene_pair(datadir)
-    #expr_dir = '/home/comp/jxchen/xuyu/data/mouse_cortex'
-    
+   
     sample_index, sample_size, whole_RPKM , gene_map= load_real_data(expr_dir,3) 
 
-    #train_known = np.load('/home/comp/jxchen/xuyu/FuncAssign_new/genepair/'+function_name+'_known_gene.npy') # avoid leak, genes in known set
     known_gene = np.load(shared_known_genes)
     
     known_gene_index = []
@@ -188,19 +184,17 @@ if __name__ == '__main__':
     cov_matrix = calculate_cov(whole_RPKM)
     x_data = []
     y_data = []
-    #for i in range(len(Label)):
-    for i in range(2):
+    for i in range(len(Label)):
+    #for i in range(2): # for debug
         print('%d/%d'%(i+1,len(Label)))
         hist_list = get_images_with_top_cov_pairs(G1[i],G2[i],cov_matrix,gene_map,whole_RPKM,sample_index,sample_size,known_gene_index)
         x_data.append(hist_list)
         y_data.append(Label[i])
+    
     xx = np.array(x_data)
-    #save_header = '/home/comp/jxchen/xuyu/FuncAssign_new/inputData/'
-    #np.save(save_header +function_name+'_train_xdata_vDT.npy',xx)
-    #np.save(save_header +function_name+'_train_ydata_vDT.npy', np.array(y_data))
+
     if save_header is not None:
         if not os.path.isdir(save_header):
             os.mkdir(save_header)
     np.save(save_header + '/' + save_name,xx)
-    #np.save(save_header + np.array(y_data))
-    
+

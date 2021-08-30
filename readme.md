@@ -1,7 +1,7 @@
 # dynDeepDRIM: a dynamic deep learning model to infer direct regulatory interactions using single cell time-course gene expression data
-***
+
 ## Single-cell time-course RNA-seq data
-These data were normalized into RPKM for dynDeepDRIM from the raw read counts:  
+These data were normalized into RPKM for this experiment from the raw read counts:  
 
 https://zenodo.org/record/5335938#.YSxikY4zb4Y  
 
@@ -10,10 +10,10 @@ Benchmark and gene pairs generation for mESC and hESC are avaliable from https:/
 
 For gene annotation assignment, we downloaded the known gene set from [GSEA](https://www.gsea-msigdb.org/gsea/index.jsp) to evaluate the performance of dynDeepDRIM.  
 
-***
+
 ## Code Environment
-Code is tested using Python 3.6 and R 3.6.
-***
+Code is tested using Python 3.6.8
+
 ## Task1: TF-gene prediction for GRN reconstruction
 ### Step1: Generating input tensor for dynDeepDRIM
 #### Python script: generate_input_tfgene.py
@@ -29,6 +29,11 @@ Example of the command line:
 * -TF_num: To generate representation for this number of TFs. Should be a integer that equal or samller than the number of TFs in the pairs_for_predict_file.  
 * -n_timepoints: The number of time points in time-course dataset.
 
+Example output:
++ x file: The representation of genes' expression file, use as the input of the model.
++ y file: The label for the corresponding pairs. 
++ z file: Indicate the gene name for each pair. 
+
 ### Step2: Train and test the model
 #### Python script: dynDeepDRIM_TF_gene.py
 Example of the command line:
@@ -42,23 +47,35 @@ python3 dynDeepDRIM_TF_gene.py -num_batches 36 -data_path /home/comp/jxchen/xuyu
 
 
 ## Task2: Functional annotation assignment of genes
-### Input tensor generation: generate_input_funcassign.py
-+ Generateing train set
-> python3 generate_input_funcassign.py -genepairs_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_gene_pairs_train.txt -expression_filepath /home/comp/jxchen/xuyu/data/mouse_cortex -func_geneset_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_known_gene.npy -n_timepoints 3 -save_dir /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors -save_filename immune_train
-+ Generateing test set
->python3 generate_input_funcassign.py -genepairs_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_gene_pairs_test.txt -expression_filepath /home/comp/jxchen/xuyu/data/mouse_cortex -func_geneset_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_known_gene.npy -n_timepoints 3 -save_dir /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors -save_filename immune_test
->> -genepairs_filepath  
->> -expression_filepath  
->> -func_geneset_filepath  
->> -n_timepoints  
->> -save_dir  
->> -save_filename
+### Step1: Generating input tensor for dynDeepDRIM 
+#### python script: generate_input_funcassign.py
+Example of the command line:
+``` bash
+ python3 generate_input_funcassign.py -genepairs_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_gene_pairs_train.txt -expression_filepath /home/comp/jxchen/xuyu/data/mouse_cortex -func_geneset_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_known_gene.npy -n_timepoints 3 -save_dir /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors -save_filename immune_train
 
-### Train and test the model: dynDeepDRIM_func_annotation.py
-> python3 dynDeepDRIM_func_annotation.py -train_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_train.npy -test_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_test.npy -output_dir Result_annotation -count_set_path /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_count_set_test.txt -annotation_name immune
->> -train_data_path  
->> -test_data_path  
->> -output_dir  
->> -count_set_path  
->> -annotation_name  
+python3 generate_input_funcassign.py -genepairs_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_gene_pairs_test.txt -expression_filepath /home/comp/jxchen/xuyu/data/mouse_cortex -func_geneset_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_known_gene.npy -n_timepoints 3 -save_dir /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors -save_filename immune_test
+```
++ -genepairs_filepath: The file of the training gene pairs and their labels.   
++ -expression_filepath: The file of the normalized gene expression profile, which the row represents cell and the column represents gene.  
++ -func_geneset_filepath: The shared genes between download gene set and genes in expression profiles. The neighbor genes will exclude these genes.   
++ -n_timepoints: The number of time points in time-course dataset.  
++ -save_dir: Indicate the path for output.   
++ -save_filename: Suggests specific annotation name (e.g. immune_train).
+
+Example output:  
++ immune_train.npy: The representation of genes' expression file, use as the input of the model for training.
++ immune_test.npy: The representation of genes' expression file, use as the input of the model for test.  
+
+### Step2: Train and test the model 
+Before training the model, please make sure both training and test sets input tensors were generated.  
+  
+#### python script: dynDeepDRIM_func_annotation.py
+``` bash
+ python3 dynDeepDRIM_func_annotation.py -train_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_train.npy -test_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_test.npy -output_dir Result_annotation -count_set_path /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_count_set_test.txt -annotation_name immune
+```
++ -train_data_path : The paht of the training input tensors generated in Step1.  
++ -test_data_path: The paht of the test input tensors generated in Step1.    
++ -output_dir: Indicate the path for output.     
++ -count_set_path: For calculating and collecting AUROCs of each g1(first gene in gene pairs) to assess the performance of the model. 
++ -annotation_name: The name of result folder 
 
