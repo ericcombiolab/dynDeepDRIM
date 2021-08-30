@@ -19,7 +19,7 @@ Code is tested using Python 3.6.8
 #### Python script: generate_input_tfgene.py
 Example of the command line:
 ``` bash
- python3 generate_input_tfgene.py -out_dir hesc1_representation -expr_file /home/comp/jxchen/xuyu/data/hesc1_expression_data -pairs_for_predict_file /home/comp/jxchen/xuyu/dynDeepDRIM/DB_pairs_TF_gene/hesc1_gene_pairs_400.txt -geneName_map_file /home/comp/jxchen/xuyu/dynDeepDRIM/DB_pairs_TF_gene/hesc1_gene_list_ref.txt -TF_divide_pos_file /home/comp/jxchen/xuyu/dynDeepDRIM/DB_pairs_TF_gene/hesc1_gene_pairs_400_num.txt -TF_num 36 -n_timepoints 5
+python3 generate_input_tfgene.py -out_dir hesc1_representation -expr_file /home/comp/jxchen/xuyu/data/hesc1_expression_data -pairs_for_predict_file /home/comp/jxchen/xuyu/dynDeepDRIM/DB_pairs_TF_gene/hesc1_gene_pairs_400.txt -geneName_map_file /home/comp/jxchen/xuyu/dynDeepDRIM/DB_pairs_TF_gene/hesc1_gene_list_ref.txt -TF_divide_pos_file /home/comp/jxchen/xuyu/dynDeepDRIM/DB_pairs_TF_gene/hesc1_gene_pairs_400_num.txt -TF_num 36 -n_timepoints 5
 ```
 * -out_dir: Indicate the path for output.  
 * -expr_file: The file of the normalized gene expression profile, which the row represents cell and the column represents gene.  
@@ -51,7 +51,7 @@ python3 dynDeepDRIM_TF_gene.py -num_batches 36 -data_path /home/comp/jxchen/xuyu
 #### python script: generate_input_funcassign.py
 Example of the command line:
 ``` bash
- python3 generate_input_funcassign.py -genepairs_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_gene_pairs_train.txt -expression_filepath /home/comp/jxchen/xuyu/data/mouse_cortex -func_geneset_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_known_gene.npy -n_timepoints 3 -save_dir /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors -save_filename immune_train
+python3 generate_input_funcassign.py -genepairs_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_gene_pairs_train.txt -expression_filepath /home/comp/jxchen/xuyu/data/mouse_cortex -func_geneset_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_known_gene.npy -n_timepoints 3 -save_dir /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors -save_filename immune_train
 
 python3 generate_input_funcassign.py -genepairs_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_gene_pairs_test.txt -expression_filepath /home/comp/jxchen/xuyu/data/mouse_cortex -func_geneset_filepath /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_known_gene.npy -n_timepoints 3 -save_dir /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors -save_filename immune_test
 ```
@@ -70,12 +70,21 @@ Example output:
 Before training the model, please make sure both training and test sets input tensors were generated.  
   
 #### python script: dynDeepDRIM_func_annotation.py
+Example of the command line:
 ``` bash
- python3 dynDeepDRIM_func_annotation.py -train_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_train.npy -test_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_test.npy -output_dir Result_annotation -count_set_path /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_count_set_test.txt -annotation_name immune
+python3 dynDeepDRIM_func_annotation.py -train_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_train.npy -test_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_test.npy -output_dir Result_annotation -count_set_path /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_count_set_test.txt -annotation_name immune
 ```
 + -train_data_path : The paht of the training input tensors generated in Step1.  
 + -test_data_path: The paht of the test input tensors generated in Step1.    
 + -output_dir: Indicate the path for output.     
 + -count_set_path: For calculating and collecting AUROCs of each g1(first gene in gene pairs) to assess the performance of the model. 
 + -annotation_name: The name of result folder 
+
+
+## For static scRNA-seq data  
+Refer to previous work by Jiaxing Chen, **DeepDRIM**: https://github.com/jiaxchen2-c/DeepDRIM
+
+
+## Contact  
+If any question, please feel free to contact with me(email: csyuxu@comp.hkbu.edu.hk) or my supervisor Dr.Eric Zhang(email: ericluzhang@hkbu.edu.hk) 
 
