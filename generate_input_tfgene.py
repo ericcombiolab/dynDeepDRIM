@@ -14,7 +14,6 @@ parser.add_argument('-out_dir', required=True, help='Indicate the path for outpu
 parser.add_argument('-expr_file', required=True, help='The file of the gene expression profile. Can be h5 or csv file, the format please refer the example data.')
 parser.add_argument('-pairs_for_predict_file', required=True, help='The file of the training gene pairs and their labels.')
 parser.add_argument('-geneName_map_file', required=True, default=None, help='The file to map the name of gene in expr_file to the pairs_for_predict_file')
-parser.add_argument('-flag_load_split_batch_pos', default=True, help='Is there a file that indicate the position in pairs_for_predict_file to divide pairs into different TFs.')
 parser.add_argument('-TF_divide_pos_file', default=None, help='File that indicate the position in pairs_for_predict_file to divide pairs into different TFs.')
 parser.add_argument('-TF_num', type=int, default=None, help='To generate representation for this number of TFs. Should be a integer that equal or samller than the number of TFs in the pairs_for_predict_file.')
 parser.add_argument('-n_timepoints', type=int,default=1, help='The number of time points we plan to use for time course data')
@@ -32,7 +31,7 @@ class RepresentationTest2:
         self.geneID_map = None  # not necessary, ID in expr to ID in gold standard
         self.ID_to_name_map = None
         self.split_batch_pos = None
-        self.gold_standard = {}  # geneA;geneB -> 0,1,2 #note direction, geneA,geneB is diff with geneB,geneA
+        self.gold_standard = {} 
         self.output_dir = output_dir 
         self.x_method_version = x_method_version
 
@@ -253,8 +252,8 @@ class RepresentationTest2:
                     zdata.append(z)
                            
                #debug only
-                if i>=10:
-                    break
+                # if i>=10:
+                    # break
                    
             if (len(xdata) > 0):
                 if len(shape(xdata)) == 5:
@@ -334,8 +333,8 @@ class RepresentationTest2:
                     self.get_batch_time(select_list, self.output_dir + "v_dynDeepDRIM/" + str(i), 11)# for D_T
 
                 #debug only
-                if i>=2:
-                    sys.exit()
+                # if i>=2:
+                    # sys.exit()
         else:
             sys.exit('Pls provide split_batch_pos file!')
 
@@ -478,13 +477,15 @@ def main_for_representation_single_cell_type(out_dir, expr_file, pairs_for_predi
 
 if __name__ == '__main__':
 
-    flag_load_split_batch_pos = (args.flag_load_split_batch_pos=='True')
+    #flag_load_split_batch_pos = (args.flag_load_split_batch_pos=='True')
   
     if args.TF_num=='None':
         TF_num = None
     else:
         TF_num = args.TF_num
 
-    main_for_representation_single_cell_type(out_dir=args.out_dir, expr_file=args.expr_file, pairs_for_predict_file=args.pairs_for_predict_file, TF_divide_pos_file=args.TF_divide_pos_file, geneName_map_file=args.geneName_map_file, TF_num=TF_num,
-                                             flag_load_split_batch_pos=flag_load_split_batch_pos,n_timepoints=args.n_timepoints)
+    # main_for_representation_single_cell_type(out_dir=args.out_dir, expr_file=args.expr_file, pairs_for_predict_file=args.pairs_for_predict_file, TF_divide_pos_file=args.TF_divide_pos_file, geneName_map_file=args.geneName_map_file, TF_num=TF_num,
+                                             # flag_load_split_batch_pos=flag_load_split_batch_pos,n_timepoints=args.n_timepoints)
 
+    main_for_representation_single_cell_type(out_dir=args.out_dir, expr_file=args.expr_file, pairs_for_predict_file=args.pairs_for_predict_file, TF_divide_pos_file=args.TF_divide_pos_file, geneName_map_file=args.geneName_map_file, TF_num=TF_num,
+                                         n_timepoints=args.n_timepoints)
