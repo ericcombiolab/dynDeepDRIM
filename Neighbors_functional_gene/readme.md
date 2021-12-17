@@ -9,7 +9,11 @@ Run python script `find_neigbor_genes.py`
 * -positive_path: positive cases (genes) file. For example: [immune](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_func_annotation/immune_known_gene.npy)
 * -negative_path: positive cases (genes) file. For example: [immune](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_func_annotation/immune_unknown_gene.npy)
 * -func_name: the name of funtional genes
-* -top_n: the number of top genes we would select, default=10
+* -top_n: the number of top genes we would select, default=10  
+
+Output: 
+* posi_XXXX_neighborname.txt: genes in each row correspond with the gene in **-positive_path**
+* nega_XXXX_neighborname.txt: genes in each row correspond with the gene in **-negative_path**
 
 ***
 
