@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import pickle
+#import pickle
 import argparse
 import os
 
@@ -164,21 +164,23 @@ def debug_print_neighbor_genename_one(geneA,cov_matrix,gene_map,whole_RPKM,train
         
 if __name__ == '__main__':
 
-
+    # arg load
     datadir= args.genepairs_filepath
     expr_dir = args.expression_filepath
     n_tp = args.n_timepoints
     save_header = args.save_dir
     save_name = args.save_filename
     shared_known_genes = args.func_geneset_filepath
+    
+    # Load gene pairs and its labels
     G1,G2,Label = load_gene_pair(datadir)
-   
+    # Load expression data
     sample_index, sample_size, whole_RPKM , gene_map= load_real_data(expr_dir,3) 
-
+    # Load known genes, the neighbor genes will exclude these genes
     known_gene = np.load(shared_known_genes)
     
     known_gene_index = []
-    for i in range(len(known_gene_index)):
+    for i in range(len(known_gene)):
         known_gene_index.append(int(np.where(gene_map==known_gene[i])[0]))
     
     cov_matrix = calculate_cov(whole_RPKM)
