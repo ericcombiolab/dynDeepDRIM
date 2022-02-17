@@ -37,6 +37,13 @@ Example output:
 + z file: Indicate the gene name for each pair. 
 
 ### STEP2: Train and test the model
+#### Python script: fold_divide_ByTF.py.py
+Example of the command line:
+``` bash
+python3 fold_divide_ByTF.py -pos_filepath XXX/hesc1_gene_pairs_400_num.txt -out_filename XXX/hesc1_cross_validation_fold_divide.txt
+```
+Separate gene pairs into three folds according to TFs (making the number of pairs in each fold being as equal as possible).
+
 #### Python script: dynDeepDRIM_TF_gene.py
 Example of the command line:
 ``` bash
@@ -47,6 +54,7 @@ python3 dynDeepDRIM_TF_gene.py -num_batches 36 -data_path /home/comp/jxchen/xuyu
 * -output_dir: Indicate the path for output.  
 * -cross_validation_fold_divide_file: A file that indicate how to divide the x file into three-fold. For example, [hesc1_cross_validation_fold_divide.txt](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_pairs_TF_gene/hesc1_cross_validation_fold_divide.txt) 
 
+******
 
 ## TASK2: Functional annotation assignment of genes
 ### STEP1: Generating input tensor for dynDeepDRIM 
@@ -81,6 +89,7 @@ python3 dynDeepDRIM_func_annotation.py -train_data_path /home/comp/jxchen/xuyu/d
 + -output_dir: Indicate the path for output.     
 + -count_set_path: For calculating and collecting AUROCs of each g1(first gene in gene pairs) to assess the performance of the model. 
 + -annotation_name: The name of result folder 
+
 
 
 ## For static scRNA-seq data  
