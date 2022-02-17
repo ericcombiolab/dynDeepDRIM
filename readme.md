@@ -12,7 +12,9 @@ For gene annotation assignment, we downloaded the known gene set from [GSEA](htt
 
 
 ## Code Environment
-Code is tested using Python 3.6.8
+Code is tested using:
+Python 3.6.8
+Tensorflow 2.7.0
 
 ## TASK1: TF-gene prediction for GRN reconstruction
 ### STEP1: Generating input tensor for dynDeepDRIM
@@ -43,7 +45,7 @@ python3 dynDeepDRIM_TF_gene.py -num_batches 36 -data_path /home/comp/jxchen/xuyu
 * -num_batches: Since in STEP 1, we divide training pairs by TFs, and representation for one TF is included in one batch. Here the num_batches should be the number of TF.  
 * -data_path: The path that includes x file, y file and z file, which is generated in the last step.
 * -output_dir: Indicate the path for output.  
--cross_validation_fold_divide_file: A file that indicate how to divide the x file into three-fold. For example, [hesc1_cross_validation_fold_divide.txt](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_pairs_TF_gene/hesc1_cross_validation_fold_divide.txt) 
+* -cross_validation_fold_divide_file: A file that indicate how to divide the x file into three-fold. For example, [hesc1_cross_validation_fold_divide.txt](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_pairs_TF_gene/hesc1_cross_validation_fold_divide.txt) 
 
 
 ## TASK2: Functional annotation assignment of genes
