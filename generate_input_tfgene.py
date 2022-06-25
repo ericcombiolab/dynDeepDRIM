@@ -1,31 +1,35 @@
-
 from __future__ import print_function
 
 
 import pandas as pd
 from numpy import *
 import numpy as np
-import json, re,os, sys
+import re, os, sys
 import argparse
 
 parser = argparse.ArgumentParser(description="")
 
 parser.add_argument('-out_dir', required=True, help='Indicate the path for output.')
-parser.add_argument('-expr_file', required=True, help='The file of the gene expression profile. Can be h5 or csv file, the format please refer the example data.')
-parser.add_argument('-pairs_for_predict_file', required=True, help='The file of the training gene pairs and their labels.')
+parser.add_argument('-expr_file', required=True, help='The file of the gene expression profile (.h5 file), the format please refer the example data.')
+parser.add_argument('-pairs_for_predict_file', required=True, help='The file of the gene pairs and their labels (format: GeneA GeneB label).')
 parser.add_argument('-geneName_map_file', required=True, default=None, help='The file to map the name of gene in expr_file to the pairs_for_predict_file')
 parser.add_argument('-TF_divide_pos_file', default=None, help='File that indicate the position in pairs_for_predict_file to divide pairs into different TFs.')
 parser.add_argument('-TF_num', type=int, default=None, help='To generate representation for this number of TFs. Should be a integer that equal or samller than the number of TFs in the pairs_for_predict_file.')
-parser.add_argument('-n_timepoints', type=int,default=1, help='The number of time points we plan to use for time course data')
+parser.add_argument('-n_timepoints', type=int,default=1, help='The number of time points ( =< maximun number of time points in the dataset, default 1).')
+parser.add_argument('-neighbor_criteria', type=str, default='cov', help="The option of the measures used to find out the neighbor genes ('cov': covariance; 'corr':correlation, default 'cov').")
+parser.add_argument('-top_num', type=int, default=10, help="The number of top neighbor genes to be involved (default 10).")
+parser.add_argument('-get_abs', type=bool, default=False, help="Apply absolute value (covariance/correlation) to identify neighbor genes? (default False).")
+parser.add_argument('-image_resolution', type=int, default=8, help="Image resolution (default 8).")
+
 
 args = parser.parse_args()
 
 
-class RepresentationTest2:
-    def __init__(self,output_dir,x_method_version=1, max_col=None, start_batch_num=0,
-                 end_batch_num=None,load_batch_split_pos=False):
-        # input
-        self.load_batch_split_pos = load_batch_split_pos
+class Tensor_generation:
+    def __init__(self,output_dir,x_method_version=1, max_col=None, start_batch_num= 0,
+                 end_batch_num=None, load_batch_split_pos=False, neighbor_criteria='cov', resolution_3d = 8):
+       
+        self.load_batch_split_pos = load_batch_split_pos # 
         self.geneIDs = None  #
         self.rpkm = None
         self.geneID_map = None  # not necessary, ID in expr to ID in gold standard
@@ -45,7 +49,7 @@ class RepresentationTest2:
         self.timepoints = 1
         self.sample_sizex = []
   
-        self.resolution_3d = 8
+        self.resolution_3d = resolution_3d ## default 8
 
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
@@ -58,11 +62,12 @@ class RepresentationTest2:
         self.start_batch_num = start_batch_num
         self.cov_matrix = None
         self.corr_matrix = None
-
+        self.neighbor_criteria = neighbor_criteria
+        
 
     def get_expr_by_networki_geneName(self, geneA):  #for simulation, for liver
         index=self.geneID_map.get(str(geneA)) # gene symbol
-
+        
         if index is None:
             index = int(geneA)
             geneA_x = self.rpkm.iloc[:,index]
@@ -74,11 +79,15 @@ class RepresentationTest2:
             index2 = np.where(self.geneIDs==index) 
             index = index2[0]
             geneA_x = self.rpkm.iloc[:,index] 
-
+            
+        
         geneA_x=geneA_x.to_numpy().reshape(-1)
+        
+        
         return geneA_x
 
-    def get_index_by_networki_geneName(self, geneA):  #for simulation, for liver
+
+    def get_index_by_networki_geneName(self, geneA):  
         index=self.geneID_map.get(str(geneA))
         if index is None:
             index = int(geneA)
@@ -91,6 +100,7 @@ class RepresentationTest2:
             index = index2[0]
         return index
 
+
     def get_gene_list(self, file_name):
         import re
         h = {}
@@ -98,26 +108,30 @@ class RepresentationTest2:
         s = open(file_name, 'r')  # gene symbol ID list of sc RNA-seq
         for line in s:
             search_result = re.search(r'^([^\s]+)\s+([^\s]+)', line)
-            #print("-",search_result.group(1),"-",search_result.group(2),"-")
+       
             h[str(search_result.group(1).lower())] = str(search_result.group(2).lower())  # h [gene symbol] = gene ID
             h2[str(search_result.group(2).lower())] = str(search_result.group(1).lower()) #h2 geneID = gene symbol
         self.geneID_map = h
         self.ID_to_name_map = h2
-        #print(self.geneID_map)
         s.close()
 
     def load_real_data(self, filedir, n_timepoints):
-        
         if not filedir == 'None' and int(n_timepoints):
             sample_size_list = []
             total_RPKM_list = []
-            for indexy in range (0,int(n_timepoints)): # time points number
-                store = pd.HDFStore(filedir+'/'+'RPKM_'+str(indexy)+'.h5') #    # scRNA-seq expression data                        )#
-                rpkm = store['RPKMs']
-                #for mesc1 dataset
-                # store = pd.HDFStore(filedir+'/'+'RPM_'+str(indexy)+'.h5')
-                # rpkm = store['/RPKM']
+            for indexy in range (0,int(n_timepoints)): 
+                # sctransform normalized expression data
+                store = pd.HDFStore(filedir+'/'+'ST_t'+str(indexy)+'.h5')                  
+                rpkm = store['STrans']
                 store.close()
+                
+                # #cell number evaluation
+                # n_cells_contain= rpkm.index.size
+                # n_cells_setting = 200            
+                # if n_cells_setting < n_cells_contain:               
+                    # tmp_idx = np.random.randint(0, n_cells_contain, size=n_cells_setting)  
+                    # rpkm = rpkm.iloc[tmp_idx]
+                    
                 total_RPKM_list.append(rpkm)
                 sample_size_list = sample_size_list + [indexy for i in range (rpkm.shape[0])] #append(rpkm.shape[0])
                 self.sample_sizex.append(rpkm.shape[0])
@@ -126,16 +140,17 @@ class RepresentationTest2:
             self.total_RPKM = pd.concat(total_RPKM_list, ignore_index=True)
             print('\n')
             print('----------- real expression data info ------------')
-            print('read sc RNA-seq expression, size(n_cell):',self.sample_size) # YU: sample_size= sum(n_rows_all)
-            print('sample size in eachtime(n_cell_time):',self.sample_sizex)
-            print('table for all time-series expression data',self.total_RPKM)
-            print('sample time point symbol:', self.samples) # YU : a list with same length of n_rows_all, indicates cell data from which time point.
+            print('The number of total cells:',self.sample_size) 
+            print('The number of total cells each time point:',self.sample_sizex)
+            print('The matrix of all time-course expression data',self.total_RPKM)
+            print('The time point symbol of the cells:', self.samples) 
             
 
         self.rpkm = self.total_RPKM # for compatible other funcs
         self.geneIDs=self.total_RPKM.columns
         self.geneIDs=np.asarray(self.geneIDs,dtype=str)
-
+        self.geneIDs = np.char.lower(self.geneIDs)
+        
         print("gene nums:",len(self.total_RPKM.columns))
         print("cell nums:", self.sample_size)
         print('\n')
@@ -188,22 +203,28 @@ class RepresentationTest2:
 
     # new for time-series data , this is the exactly defference of constructing histogram(image) 
     def get_histogram_bins_time(self, geneA, geneB):
+    
         x_geneA=self.get_expr_by_networki_geneName(geneA)
         x_geneB=self.get_expr_by_networki_geneName(geneB)
+       
+  
         H =[]
         if x_geneA is not None:
             if x_geneB is not None:
-                #print("x_geneA",x_geneA)
-                #print("x_geneB",x_geneB)
-                x_tf = np.array(np.log10(x_geneA + 10 ** -2) )  # to log space
-                x_gene = np.array(np.log10(x_geneB + 10 ** -2))
              
-                datax = np.concatenate((x_tf[:, np.newaxis], x_gene[:, np.newaxis], self.samples[:, np.newaxis]), axis=1)           
+                # x_tf = np.array(np.log10(x_geneA + 10 ** -2) )  
+                # x_gene = np.array(np.log10(x_geneB + 10 ** -2)) 
+                ## use stransform to normalize UMI, remove the log-normalization     
+                x_tf = x_geneA
+                x_gene = x_geneB
+                
+                datax = np.concatenate((x_tf[:, np.newaxis], x_gene[:, np.newaxis], self.samples[:, np.newaxis]), axis=1) 
+                
                 H, edges = np.histogramdd(datax, bins=(self.resolution_3d, self.resolution_3d, self.timepoints))
                            
                 HT = (np.log10(H / self.sample_sizex + 10 ** -3) + 3) / 3
                 H2 = transpose(HT, (2, 0, 1))
-                
+             
                 return H2
             else:
                 return None
@@ -216,7 +237,6 @@ class RepresentationTest2:
         if self.x_method_version != 0:
             if self.max_col is None:
                 self.max_col = 2 * len(self.geneIDs)
-
 
         x = self.get_x_for_one_pair_version11_time(geneA, geneB)           
 
@@ -315,7 +335,7 @@ class RepresentationTest2:
                 self.end_batch_num = len(index_start_list)
             else:
                 if self.end_batch_num > len(index_start_list):
-                    self.end_batch_num = len(index_start_list) ####?????!!!!!
+                    self.end_batch_num = len(index_start_list)
 
             for i in range(self.start_batch_num, self.end_batch_num):
                 print('Batch-th:',i+1)
@@ -329,8 +349,8 @@ class RepresentationTest2:
                     for j in range(index_start,index_end):
                         self.generate_key_list.append(key_list[j]+','+str(self.gold_standard.get(key_list[j])))
 
-                    self.resolution_3d=8
-                    self.get_batch_time(select_list, self.output_dir + "v_dynDeepDRIM/" + str(i), 11)# for D_T
+                   
+                    self.get_batch_time(select_list, self.output_dir + "v_dynDeepDRIM/" + str(i), 11)
 
                 #debug only
                 # if i>=2:
@@ -346,7 +366,7 @@ class RepresentationTest2:
         if self.corr_matrix is None or self.cov_matrix is None:
             self.calculate_cov()
         if cov_or_corr=="corr":
-            np.fill_diagonal(self.corr_matrix, 0)
+            np.fill_diagonal(self.corr_matrix, 0) # gene itself (pcc_value=1)
               
         histogram_list = []
         networki = geneA.split(":")[0]
@@ -411,7 +431,7 @@ class RepresentationTest2:
     def get_x_for_one_pair_version11_time(self, geneA, geneB):
         x = self.get_histogram_bins_time(geneA, geneB)
         histogram_list=[] 
-        histogram_list=self.get_top_cov_pairs(geneA,geneB,"cov") # gene A-A,B-B,A-top_covA,B-top_covB             
+        histogram_list=self.get_top_cov_pairs(geneA,geneB, self.neighbor_criteria) # gene A-A,B-B,A-top_covA,B-top_covB             
         if len(histogram_list)>0:   
             #print("len histogram", len(histogram_list))       
             # concantate together, if ij not compress, consider the way put together. or consider multiple channel
@@ -429,7 +449,7 @@ class RepresentationTest2:
         #print("x shape",shape(x))
         return x
 
-    def setting_for_one_pair(self, top_num=1000, add_self_image=True, get_abs=False,n_timepoints=1):
+    def setting_for_one_pair(self, top_num=10, add_self_image=True, get_abs=False, n_timepoints=1):
 
         self.top_num = top_num
         self.add_self_image = add_self_image
@@ -439,39 +459,38 @@ class RepresentationTest2:
         # print information after set some 
         print('\n')
         print('--------Setting info--------')
-        print('num of top neighbor gene:', self.top_num)
-        print('add A->A, B->B:',self.add_self_image)
-        print('abs?:',self.get_abs)
-        print('n_timepoints:',self.timepoints)
-        print('split pairs based batch file?:',self.load_batch_split_pos)
-
+        print('num of top neighbor gene:\t', self.top_num)
+        print('add A->A, B->B?:\t',self.add_self_image)
+        print('abs?:\t',self.get_abs)
+        print('n_timepoints:\t',self.timepoints)
+        print('split pairs based batch file?:\t',self.load_batch_split_pos)
         print('\n')
         
 def main_for_representation_single_cell_type(out_dir, expr_file, pairs_for_predict_file, TF_divide_pos_file=None, geneName_map_file=None, TF_num=None,
                                              TF_pairs_num_lower_bound=0, TF_pairs_num_upper_bound=None,
                                              flag_load_split_batch_pos=True, add_self_image=True,
-                                             get_abs=False,n_timepoints=1):
+                                             get_abs=False,n_timepoints=1,neighbor_criteria='cov', top_num=10, resolution_3d=8):
     if out_dir.endswith("/"):
         pass
     else:
         out_dir=out_dir+"/"
 
-    ec = RepresentationTest2(out_dir, x_method_version=11, load_batch_split_pos=flag_load_split_batch_pos, start_batch_num=0, end_batch_num=TF_num, max_col=1)
+    ins = Tensor_generation(out_dir, x_method_version=11, load_batch_split_pos=flag_load_split_batch_pos, start_batch_num=0, end_batch_num=TF_num, max_col=1, neighbor_criteria=neighbor_criteria, resolution_3d=resolution_3d)
         
-    ec.setting_for_one_pair(top_num=10, add_self_image=add_self_image, get_abs=get_abs,n_timepoints=n_timepoints) # yu: top_num: num of top p-cov genes with gene A/B
+    ins.setting_for_one_pair(top_num=top_num, add_self_image=add_self_image, get_abs=get_abs,n_timepoints=n_timepoints) 
 
     if flag_load_split_batch_pos:
-        ec.load_split_batch_pos(TF_divide_pos_file)
+        ins.load_split_batch_pos(TF_divide_pos_file)
     else:
         print('pls set it to be true and provide TF_divide_pos_file')
 
-    ec.get_gene_list(geneName_map_file) 
+    ins.get_gene_list(geneName_map_file) 
   
-    ec.load_real_data(expr_file,n_timepoints)  # YU: only load h5 expression files in the experiments
+    ins.load_real_data(expr_file, n_timepoints)  
 
-    ec.get_gold_standard(pairs_for_predict_file) # YU: get self.gold_standard and self.key_list
+    ins.get_gold_standard(pairs_for_predict_file) 
 
-    ec.get_train_test(generate_multi=True,TF_pairs_num_lower_bound=TF_pairs_num_lower_bound,TF_pairs_num_upper_bound=TF_pairs_num_upper_bound)
+    ins.get_train_test(generate_multi=True, TF_pairs_num_lower_bound=TF_pairs_num_lower_bound, TF_pairs_num_upper_bound=TF_pairs_num_upper_bound)
 
 
 
@@ -488,4 +507,6 @@ if __name__ == '__main__':
                                              # flag_load_split_batch_pos=flag_load_split_batch_pos,n_timepoints=args.n_timepoints)
 
     main_for_representation_single_cell_type(out_dir=args.out_dir, expr_file=args.expr_file, pairs_for_predict_file=args.pairs_for_predict_file, TF_divide_pos_file=args.TF_divide_pos_file, geneName_map_file=args.geneName_map_file, TF_num=TF_num,
-                                         n_timepoints=args.n_timepoints)
+                                         n_timepoints=args.n_timepoints, neighbor_criteria=args.neighbor_criteria, top_num=args.top_num, get_abs=args.get_abs, resolution_3d=args.image_resolution)
+                                         
+                                         
