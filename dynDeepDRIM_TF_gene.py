@@ -1,21 +1,13 @@
 from __future__ import print_function
-# Usage  python train_with_labels_three_fold.py number_of_data_parts_divided NEPDF_pathway number_of_category
-# command line in developer's linux machine :
-# module load cuda-8.0 using GPU
-#srun -p gpu --gres=gpu:1 -c 2 --mem=20Gb python train_with_labels_three_foldx.py 9 /home/yey3/cnn_project/code3/NEPDF_data 3 > results.txt
-#######################OUTPUT
-# it will generate three-fold cross validation results
 
-#CUDA_VISIBLE_DEVICES='0' python gpu_print.py
 
 import argparse
-
 import sys
 import os
 
 parser = argparse.ArgumentParser(description="example")
 
-from numba import jit, cuda
+
 import tensorflow.keras as keras
 import tensorflow as tf
 
@@ -41,33 +33,29 @@ parser = argparse.ArgumentParser(description="")
 parser.add_argument('-num_batches', type=int, required=True, default=None, help="Number of TF or the number of x file.")
 parser.add_argument('-data_path', required=True, default=None, help="The path that includes x file, y file and z file.")
 parser.add_argument('-output_dir', required=True, default="./output/", help="Indicate the path for output.")
-parser.add_argument('-cross_validation_fold_divide_file', default=None, help="A file that indicate how to divide the x file into three-fold. The file include three line, each line list the ID of the x files for the folder (split by ',')")
+parser.add_argument('-cross_validation_fold_divide_file', default=None, help="A file that indicate how to divide the x file into n-fold.")
 
 args = parser.parse_args()
 
 
-class direct_model1_squarematrix:
+
+class dynDeepDRIM:
     def __init__(self, num_batches=5, output_dir=None, data_path=None, predict_output_dir=None):
-        # ###################################### parameter settings
         self.data_augmentation = False
-        # num_predictions = 20
         self.batch_size = 32  # mini batch for training
-        # num_classes = 3   # ### categories of labels
-        self.epochs = 200  # ### iterations of trainning, with GPU 1080, 200 for KEGG and Reactome, depends on specific tasks for GTRD, we actually selected
-        # the best epochs and learning rate by a test on the first three TF in list
-        # length_TF =3057  # number of divide data parts
-        # num_predictions = 20
+        self.epochs = 200  
+
         self.model_name = 'keras_cnn_trained_model_DeepDRIM.h5'
         self.output_dir = output_dir
         if output_dir is not None:
             if not os.path.isdir(self.output_dir):
                 os.mkdir(self.output_dir)
-        #####
-        self.num_batches = num_batches  # number of data parts divided
+    
+        self.num_batches = num_batches 
         self.data_path = data_path
         self.num_classes = 2
         self.whole_data_TF = [i for i in range(self.num_batches)]
-        ###################################################
+        
         self.x_train = None
         self.y_train = None
         self.z_train = None
@@ -78,9 +66,8 @@ class direct_model1_squarematrix:
         self.count_set = None
         self.load_model_path = None
         self.predict_output_dir = predict_output_dir
-
-
-    def load_data_TF2(self,indel_list,data_path, num_of_pair_ratio=1):  # cell type specific  ## random samples for reactome is not enough, need borrow some from keggp
+     
+    def load_data_TF2(self,indel_list,data_path, num_of_pair_ratio=1): 
         import random
         import numpy as np
         xxdata_list = []
@@ -97,12 +84,19 @@ class direct_model1_squarematrix:
             all_k_list = list(range(len(ydata)))
             select_k_list = all_k_list[0:num_of_pairs]
 
-            count=0
+            count=0          
+
             for k in select_k_list:
                 y_data = ydata[k]
-            #for TF_predict
-                if ydata[k] != 2:                     
+       
+                if ydata[k] != 2:              
+               
+                    #xxdata_list.append(np.delete(xdata[k,:,:,:,:], [1,2],axis=0))  # without self-image test 
+                    
                     xxdata_list.append(xdata[k,:,:,:,:]) # time course
+                    
+                    #xxdata_list.append(xdata[k,:,:1,:,:]) # time course, varying timepoint
+             
                     yydata.append(y_data)
                     zzdata.append(zdata[k])
                     count+=1                  
@@ -113,35 +107,30 @@ class direct_model1_squarematrix:
         yydata_array = np.array(yydata)
         yydata_x = yydata_array.astype('int')
         print(np.array(xxdata_list).shape)
+  
         return((np.array(xxdata_list),yydata_x,count_set,np.array(zzdata)))
 
-    def update_test_train_data(self, test_indel,epochs,num_of_pair_ratio=1):
-        print("len test_indel",test_indel)
+            
+    
+    def load_test_train_tensors(self, test_indel, num_of_pair_ratio=1):    
+        print("test_indel",test_indel)
         if type(test_indel)!=list:
-            test_TF = [test_indel]  #
+            test_TF = [test_indel]  
         else:
             test_TF = test_indel
-        train_TF = [i for i in self.whole_data_TF if i not in test_TF]  #
-        #####################################################################
+            
+        train_TF = [i for i in self.whole_data_TF if i not in test_TF] 
+        
         (self.x_train, self.y_train, self.count_set_train,self.z_train) = self.load_data_TF2(train_TF, self.data_path,num_of_pair_ratio)
         (self.x_test, self.y_test, self.count_set,self.z_test) = self.load_data_TF2(test_TF, self.data_path,num_of_pair_ratio)
-        print(self.x_train.shape, 'x_train samples')
-        print(self.x_test.shape, 'x_test samples')
-        if self.output_dir is not None:
-            self.save_dir = os.path.join(self.output_dir, str(test_indel) + '_saved_models' + str(epochs))  ## the result folder
-        else:
-            self.save_dir="."
-        if self.num_classes > 2:
-            self.y_train = keras.utils.to_categorical(self.y_train, self.num_classes)
-            self.y_test = keras.utils.to_categorical(self.y_test, self.num_classes)
-        print(self.y_train.shape, 'y_train samples')
-        print(self.y_test.shape, 'y_test samples')
-        ############
-        if not os.path.isdir(self.save_dir):
-            os.makedirs(self.save_dir)
+        print('train tensors \t', self.x_train.shape)
+        print('test tensors \t', self.x_test.shape)
+        print('y_train \t', self.y_train.shape)
+        print('y_test \t', self.y_test.shape)
+       
+        return True
 
     def get_single_image_model(self, x_train):
-        ############
         print("x_train.shape in single image",x_train.shape)
 
         input_img = keras.layers.Input(shape=x_train.shape[1:])
@@ -158,8 +147,8 @@ class direct_model1_squarematrix:
 
         return keras.Model(input_img,model_out)
 
+
     def get_pair_image_model(self,x_train):
-        ############
         print("x_train.shape in multi image", x_train.shape)
 
         input_img = keras.layers.Input(shape=x_train.shape[1:])
@@ -177,7 +166,6 @@ class direct_model1_squarematrix:
 
         
     def DeepDRIM_sub(self,x_train):
-        ############
         # for concatenate
         print("x shape", x_train.shape)
 
@@ -186,7 +174,6 @@ class direct_model1_squarematrix:
 
         x2=x_train[:, 1:n, :, :,np.newaxis]
         x2_1=x2[:,0,:,:,:]
-
 
         single_image_model=self.get_single_image_model(x1)
         input_img_single = keras.layers.Input(shape=x1.shape[1:])
@@ -251,9 +238,9 @@ class direct_model1_squarematrix:
         
         
     def construct_model(self, x_train):
-    
+        ## dynDeepDRIM model 
         model = self.DeepDRIM_cat(x_train)
-        
+        ## training setting
         if self.num_classes < 2:
             print('no enough categories')
             sys.exit()
@@ -263,15 +250,16 @@ class direct_model1_squarematrix:
             #sgd = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False,name='Adam')
             model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
 
-        early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=15, verbose=0, mode='auto')
+        early_stopping = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=15, verbose=0, mode='auto')
         checkpoint1 = ModelCheckpoint(filepath=self.save_dir + '/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
                                       monitor='val_loss',
                                       verbose=1, save_best_only=False, save_weights_only=False, mode='auto', period=1)
-        checkpoint2 = ModelCheckpoint(filepath=self.save_dir + '/weights.hdf5', monitor='val_loss', verbose=1,
+        checkpoint2 = ModelCheckpoint(filepath=self.save_dir + '/weights.hdf5', monitor='val_accuracy', verbose=1,
                                       save_best_only=True, mode='auto', period=1)
         callbacks_list = [checkpoint2, early_stopping]
         self.model = model
         self.callbacks_list = callbacks_list
+        
 
     def test_model(self,model,x_test,y_test,z_test,save_dir,history,test_indel):
         # Score trained model.
@@ -286,7 +274,7 @@ class direct_model1_squarematrix:
         print(z_test)
         df = pd.DataFrame(z_test)
         df.to_csv(save_dir + '/end_z_test.csv')
-        ############################################################################## plot training process
+        ### plot training process
         plt.figure(figsize=(10, 6))
         plt.subplot(1, 2, 1)
         plt.plot(history.history['accuracy'])
@@ -305,8 +293,10 @@ class direct_model1_squarematrix:
         plt.legend(['train', 'val'], loc='upper left')
         plt.grid()
         plt.savefig(save_dir + '/end_result.pdf')
-        ###############################################################  evaluation without consideration of data separation
-        if self.num_classes == 2:  ## here we only focus on three category tasks
+        
+        
+        ## plot test results
+        if self.num_classes == 2:  
             plt.figure(figsize=(10, 6))
             #for i in range(3):
                 #y_test_x = [j[i] for j in y_test]
@@ -375,55 +365,31 @@ class direct_model1_squarematrix:
             s.close()
 
 
-    def train_and_test_model(self,num_of_pair_ratio=1):
-        for test_indel in range (self.num_batches):                                      #  for GTRD leave-one-TF-out CV
-            self.update_test_train_data(test_indel,self.epochs,num_of_pair_ratio)
-            self.construct_model(self.x_train)
-            model = self.model
-            callbacks_list = self.callbacks_list
-            x_train = self.x_train
-            y_train = self.y_train
-            x_test = self.x_test
-            y_test = self.y_test
-            z_test = self.z_test
-            history = None
-            if not self.data_augmentation:
-                print('Not using data augmentation.')
-                n = x_train.shape[1]
-                x_train_list = []
-                for j in range(0, n):
-                    x_train_list.append(x_train[:, j, :, :, np.newaxis])
-                history = model.fit(x_train_list, y_train,batch_size=self.batch_size,epochs=self.epochs,validation_split=0.2,
-                          shuffle=True, callbacks=callbacks_list)
-            # Save model and weights
-            model_path = os.path.join(self.save_dir, self.model_name)
-            model.save(model_path)
-            print('Saved trained model at %s ' % model_path)
-            n2 = x_test.shape[1]
-            x_test_list = []
-            for j in range(0,n2):
-                x_test_list.append(x_test[:,j,:,:,np.newaxis])
-            self.test_model(model,x_test_list,y_test,z_test,self.save_dir,history,test_indel)
 
 
-    def train_and_test_model_dividePart_assignTForder(self,indel_list0,indel_list1,indel_list2,num_of_pair_ratio=1):
+    def cross_validation(self, indel_folds, num_of_pair_ratio=1):
 
-        indel_list0 = [int(i) for i in indel_list0]
-        indel_list1 = [int(i) for i in indel_list1]
-        indel_list2 = [int(i) for i in indel_list2]
-        
-        divide_part = 3#
-
-        for i in range(0, divide_part):
-            if i==0:
-                test_indel=indel_list0
-            elif i==1:
-                test_indel=indel_list1
-            elif i==2:
-                test_indel=indel_list2
-
-            self.update_test_train_data(test_indel,self.epochs,num_of_pair_ratio)
-            self.construct_model(self.x_train)
+        divide_parts = len(indel_folds)
+       
+        for i in range(divide_parts): 
+            
+            test_indel = indel_folds[i]
+            test_indel = [int(idx_fold) for idx_fold in test_indel] # str -> int
+            
+            data_status = self.load_test_train_tensors(test_indel, num_of_pair_ratio)
+            if data_status:
+                print('Input tensors loaded!')
+                
+            ## save dir for the output results of this fold
+            if self.output_dir is not None:
+                self.save_dir = os.path.join(self.output_dir, str(i) + '_saved_models')  # the result folder
+            else:
+                self.save_dir="."
+            if not os.path.isdir(self.save_dir):
+                os.makedirs(self.save_dir)
+            
+            ## model and train
+            self.construct_model(self.x_train)     
             model = self.model
             callbacks_list = self.callbacks_list
             x_train = self.x_train
@@ -435,19 +401,17 @@ class direct_model1_squarematrix:
             n = x_train.shape[1]
             if self.load_model_path is not None:
                 model.load_weights(self.load_model_path)
-            if not self.data_augmentation:
-                print('Not using data augmentation.')
+         
+            x_train_list=[]
 
-                x_train_list=[]
-
-                for i in range(x_train.shape[2]):
-                    x_train_singletime_list = []
-                    for j in range(0,n):    
-                        x_train_singletime_list.append(x_train[:,j,i,:,:,np.newaxis]) 
-                    x_train_list.append(x_train_singletime_list)
-                
-                history = model.fit(x_train_list, y_train,batch_size=self.batch_size,epochs=self.epochs,validation_split=0.2,
-                          shuffle=True, callbacks=callbacks_list)
+            for i in range(x_train.shape[2]):
+                x_train_singletime_list = []
+                for j in range(0,n):    
+                    x_train_singletime_list.append(x_train[:,j,i,:,:,np.newaxis]) 
+                x_train_list.append(x_train_singletime_list)
+            
+            history = model.fit(x_train_list, y_train,batch_size=self.batch_size,epochs=self.epochs,validation_split=0.2,
+                      shuffle=True, callbacks=callbacks_list)
             # Save model and weights
             model_path = os.path.join(self.save_dir, self.model_name)
             model.save(model_path)
@@ -462,9 +426,10 @@ class direct_model1_squarematrix:
                 
             self.test_model(model,x_test_list,y_test,z_test,self.save_dir,history,test_indel)
 
-def load_indel_lists_from_file(cross_validation_fold_divide_file):
-    s = open(cross_validation_fold_divide_file)
-    cross_fold = []
+    
+def load_foldInfo_from_file(cross_validation_fold_divide_file):
+    s = open(cross_validation_fold_divide_file,'r')
+    cross_folds = []
 
     for line in s:
         line=line.strip()
@@ -472,34 +437,33 @@ def load_indel_lists_from_file(cross_validation_fold_divide_file):
         indel_list = []
         for i in range(0, len(separation)):
             indel_list.append(separation[i])
-            #self.whole_data_TF.append(separation[i])
-        cross_fold.append(indel_list)
+        cross_folds.append(indel_list)
 
-    indel_list0=cross_fold[0]
-    indel_list1=cross_fold[1]
-    indel_list2=cross_fold[2]
-    print('indel_list0',indel_list0)
-    print('indel_list1',indel_list1)
-    print('indel_list2',indel_list2)
-    return indel_list0,indel_list1,indel_list2
+    return cross_folds
 
 
+def main_CV(folds_file):
 
-def main():
+    indel_folds = load_foldInfo_from_file(folds_file)
 
-    tcs = direct_model1_squarematrix(num_batches=args.num_batches,
-        data_path=args.data_path,
-        output_dir=args.output_dir)
-    indel_list0,indel_list1,indel_list2=load_indel_lists_from_file(args.cross_validation_fold_divide_file)
-
-    tcs.train_and_test_model_dividePart_assignTForder(indel_list0,indel_list1,indel_list2)
+    ins = dynDeepDRIM(num_batches=args.num_batches, data_path=args.data_path, output_dir=args.output_dir)
+    
+    ins.cross_validation(indel_folds, num_of_pair_ratio=1)
 
 
 
 if __name__ == '__main__':
 
-    if args.cross_validation_fold_divide_file is not None:
-        main()
+    ## tensorflow GPU memory growth setting
+    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+    sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    tf.compat.v1.keras.backend.set_session(sess)
+    
+    ## n-fold cross-validation
+    if args.cross_validation_fold_divide_file is not None:    
+        main_CV(folds_file=args.cross_validation_fold_divide_file)
+        
+    ## only train 
     else:
         print("Require input cross_validation_fold_divide_file")
 
