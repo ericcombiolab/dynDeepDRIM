@@ -6,7 +6,7 @@ import os
 
 parser = argparse.ArgumentParser(description="example")
 
-from numba import jit, cuda
+#from numba import jit, cuda
 import tensorflow.keras as keras
 import tensorflow as tf
 
@@ -29,18 +29,18 @@ import pandas as pd
 parser = argparse.ArgumentParser(description="")
 
 parser.add_argument('-train_data_path', required=True, default=None)
-parser.add_argument('-test_data_path', required=True, default=None)
+parser.add_argument('-test_data_path', required=False, default=None)
+parser.add_argument('-val_data_path', required=True, default=None)
 parser.add_argument('-output_dir', required=True, default="./output/", help="Indicate the path for output.")
-parser.add_argument('-count_set_path', required=True, default=None)
+parser.add_argument('-count_set_path', required=False, default=None)
 parser.add_argument('-annotation_name', type=str,required=True, default=None)
 
 args = parser.parse_args()
 
 
-class direct_model1_squarematrix:
-    def __init__(self, output_dir=None, train_data_path=None,test_data_path=None, count_set_path=None, predict_output_dir=None):
-        # ###################################### parameter settings
-        self.data_augmentation = False   
+class dynDeepDRIM_functionalAnnotation:
+    def __init__(self, output_dir=None, train_data_path=None,test_data_path=None, val_data_path=None,count_set_path=None, predict_output_dir=None):
+        # ###################################### parameter settings      
         self.batch_size = 32  # mini batch for training  
         self.epochs = 200  # 
         self.model_name = 'keras_cnn_trained_model_DeepDRIM.h5'
@@ -48,22 +48,23 @@ class direct_model1_squarematrix:
         if output_dir is not None:
             if not os.path.isdir(self.output_dir):
                 os.mkdir(self.output_dir)
-        #####
+    
         self.train_data_path = train_data_path
         self.test_data_path = test_data_path
+        self.val_data_path = val_data_path
         self.count_set_path =count_set_path
         self.count_set = []
         self.num_classes = 2
-        
-        ###################################################
+
         self.x_train = None
         self.y_train = None
-        self.z_train = None
-       
+ 
+        self.x_val = None
+        self.val = None
+   
         self.x_test = None
         self.y_test = None
-        self.z_test = None
-        
+   
         self.load_model_path = None
         self.predict_output_dir = predict_output_dir
         
@@ -78,13 +79,14 @@ class direct_model1_squarematrix:
         ###top neighbor : hyperparameter test
         # top_remain = [0,1]
         # top= [i for i in range(1,23)]
-        # top_n = 7 ## modify here
+        # top_n = 1 ## modify here
         # for j in range(2,2+top_n):
             # top_remain.append(j)
             # top_remain.append(j+10)
-                    # # # index 0:primary-image, 1,2:self-images , index 3-12:g1 neighbor, index 13-22:g2 neighbor
+                    # # index 0:primary-image, 1,2:self-images , index 3-12:g1 neighbor, index 13-22:g2 neighbor
         # top_remain = np.delete(top,top_remain)
-        # print(top_remain)
+        #print(top_remain)
+        
         for k in range(int(xdata.shape[0]/2)):
             
             # xxdata_list.append(np.delete(xdata[2*k,:,:,:,:], top_remain,axis=0)) 
@@ -103,44 +105,39 @@ class direct_model1_squarematrix:
 
 
 
-    def update_test_train_data(self,save_name_folder):
+    def update_test_train_data(self):
         
         (self.x_train, self.y_train) = self.load_data_TF2(self.train_data_path)
-        (self.x_test, self.y_test) = self.load_data_TF2(self.test_data_path)
-        print(self.x_train.shape, 'x_train samples')
-        print(self.y_train.shape, 'y_train samples')
-        print(self.x_test.shape, 'x_test samples')
-        print(self.y_test.shape, 'y_test samples')
-     
-        if self.output_dir is not None:
-            self.save_dir = os.path.join(self.output_dir, save_name_folder) 
-        else:
-            self.save_dir="."
-
-        if not os.path.isdir(self.save_dir):
-            os.makedirs(self.save_dir)
+        (self.x_val, self.y_val) = self.load_data_TF2(self.val_data_path)
+        print(self.x_train.shape, 'x_train tensors')
+        print(self.y_train.shape, 'y_train tensors')
+        print(self.x_val.shape, 'x_val tensors')
+        print(self.y_val.shape, 'y_val tensors')
+        
+        if self.test_data_path:
+            (self.x_test, self.y_test) = self.load_data_TF2(self.test_data_path)
+            print(self.x_test.shape, 'x_test tensors')
+            print(self.y_test.shape, 'y_test tensors')
+        
         
 
     def get_single_image_model(self, x_train):
-        ############
         print("x_train.shape in single image",x_train.shape)
         input_img = keras.layers.Input(shape=x_train.shape[1:])
         x=keras.layers.Conv2D(32, (3, 3), padding='same',activation='relu')(input_img)
+           
+        x=keras.layers.Conv2D(16, (3, 3),activation='relu')(x)
         
-        x=keras.layers.Conv2D(32, (3, 3),activation='relu')(x)
-      
         x=keras.layers.MaxPooling2D(pool_size=(2, 2))(x)
         x=keras.layers.Dropout(0.5)(x)
-
-        x=keras.layers.Flatten()(x)
        
-        model_out=keras.layers.Dense(512)(x)
-
-        
+        x=keras.layers.Flatten()(x)
+      
+        model_out=keras.layers.Dense(512)(x) 
         return keras.Model(input_img,model_out)
 
+
     def get_pair_image_model(self,x_train):
-        ############
         print("x_train.shape in multi image", x_train.shape)
         input_img = keras.layers.Input(shape=x_train.shape[1:])
         x = keras.layers.Conv2D(32, (3, 3), padding='same', activation='relu')(input_img)
@@ -153,12 +150,10 @@ class direct_model1_squarematrix:
         x = keras.layers.Flatten()(x)
 
         model_out = keras.layers.Dense(512)(x)
-
         return keras.Model(input_img,model_out)
 
         
     def DeepDRIM_sub(self,x_train):
-        ############
         # for concatenate
         print("x shape", x_train.shape)
 
@@ -196,6 +191,7 @@ class direct_model1_squarematrix:
         combined = keras.layers.Dense(512, activation='relu')(combined_layer)
         
         return keras.Model(input_img_whole_list, combined)
+        
         
     def DeepDRIM_cat(self,x_train):
         x_first = x_train[:,:,0,:,:]
@@ -245,7 +241,7 @@ class direct_model1_squarematrix:
             model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
 
         early_stopping = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=20, verbose=0, mode='auto')
-        checkpoint1 = ModelCheckpoint(filepath=self.save_dir + '/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+        checkpoint1 = ModelCheckpoint(filepath=self.save_dir + '/weights.{epoch:02d}-{val_accuracy:.2f}.hdf5',
                                       monitor='val_loss',
                                       verbose=1, save_best_only=False, save_weights_only=False, mode='auto', period=1)
         checkpoint2 = ModelCheckpoint(filepath=self.save_dir + '/weights.hdf5', monitor='val_accuracy', verbose=1,
@@ -253,6 +249,7 @@ class direct_model1_squarematrix:
         callbacks_list = [checkpoint2, early_stopping]
         self.model = model
         self.callbacks_list = callbacks_list
+
 
     def test_model(self,model,x_test,y_test,save_dir,history):
         # Score trained model.
@@ -265,7 +262,7 @@ class direct_model1_squarematrix:
         np.save(save_dir + '/end_y_predict.npy', y_predict)
         np.savetxt(save_dir + '/end_y_predict.csv', y_predict, delimiter=",")
        
-        ############################################################################## plot training process
+        ## plot training process
         plt.figure(figsize=(10, 6))
         plt.subplot(1, 2, 1)
         plt.plot(history.history['accuracy'])
@@ -284,7 +281,7 @@ class direct_model1_squarematrix:
         plt.legend(['train', 'val'], loc='upper left')
         plt.grid()
         plt.savefig(save_dir + '/end_result.pdf')
-        ###############################################################  evaluation without consideration of data separation
+        ## plot test results
         if self.num_classes == 2:  
             plt.figure(figsize=(10, 6))
             y_test_x = [j for j in y_test]
@@ -352,24 +349,37 @@ class direct_model1_squarematrix:
 
 
 
-    def train_and_test_model_dividePart_assignTForder(self, annotation_name):
+    def train_test_model(self, annotation_name):
 
-        self.update_test_train_data(annotation_name) # modify for different function 
-        self.load_countset(self.count_set_path)
-        self.construct_model(self.x_train)
+        self.update_test_train_data() # modify for different function 
         
+        if self.output_dir is not None:
+            self.save_dir = os.path.join(self.output_dir, annotation_name) 
+        else:
+            self.save_dir = os.path.join("./", annotation_name) 
+        if not os.path.isdir(self.save_dir):
+            os.makedirs(self.save_dir)
+         
+        if self.test_data_path:         
+            self.load_countset(self.count_set_path)
+            
+          
+        ## model and train
+        self.construct_model(self.x_train)      
         model = self.model
         callbacks_list = self.callbacks_list
         x_train = self.x_train
         y_train = self.y_train
-        x_test = self.x_test
-        y_test = self.y_test
-    
+        x_val = self.x_val
+        y_val = self.y_val
+        
         history = None
         n = x_train.shape[1]
         if self.load_model_path is not None:
             model.load_weights(self.load_model_path)
 
+
+        ## train model
         x_train_list=[]
 
         for i in range(x_train.shape[2]):
@@ -377,23 +387,34 @@ class direct_model1_squarematrix:
             for j in range(0,n):    
                 x_train_singletime_list.append(x_train[:,j,i,:,:,np.newaxis])
             x_train_list.append(x_train_singletime_list)
+            
+        x_val_list=[]
+        for i in range(x_val.shape[2]):
+            x_val_singletime_list = []
+            for j in range(0,n):    
+                x_val_singletime_list.append(x_val[:,j,i,:,:,np.newaxis])
+            x_val_list.append(x_val_singletime_list)
         
-        history = model.fit(x_train_list, y_train,batch_size=self.batch_size,epochs=self.epochs,validation_split=0.2,
+        history = model.fit(x_train_list, y_train,batch_size=self.batch_size,epochs=self.epochs, validation_data=(x_val_list,y_val),
                   shuffle=True, callbacks=callbacks_list)
         # Save model and weights
         model_path = os.path.join(self.save_dir, self.model_name)
         model.save(model_path)
         print('Saved trained model at %s ' % model_path)
         
-        x_test_list=[]
-
-        for i in range(x_test.shape[2]):
-                x_test_singletime_list = []
-                for j in range(0,n):    
-                    x_test_singletime_list.append(x_test[:,j,i,:,:,np.newaxis]) 
-                x_test_list.append(x_test_singletime_list)
-            
-        self.test_model(model,x_test_list,y_test,self.save_dir,history)
+        
+        ## test model
+        if self.test_data_path:
+            x_test = self.x_test
+            y_test = self.y_test        
+            x_test_list=[]
+            for i in range(x_test.shape[2]):
+                    x_test_singletime_list = []
+                    for j in range(0,n):    
+                        x_test_singletime_list.append(x_test[:,j,i,:,:,np.newaxis]) 
+                    x_test_list.append(x_test_singletime_list)
+                
+            self.test_model(model,x_test_list,y_test,self.save_dir,history)
 
 
     def load_countset(self,count_set_path):
@@ -410,11 +431,16 @@ class direct_model1_squarematrix:
 
 def main():
 
-    tcs = direct_model1_squarematrix(train_data_path=args.train_data_path,test_data_path=args.test_data_path,
-    output_dir=args.output_dir, count_set_path =args.count_set_path)
+    ins = dynDeepDRIM_functionalAnnotation(train_data_path=args.train_data_path,test_data_path=args.test_data_path,val_data_path=args.val_data_path,
+                                output_dir = args.output_dir, count_set_path =args.count_set_path)
 
-    tcs.train_and_test_model_dividePart_assignTForder(annotation_name= args.annotation_name)
+    ins.train_test_model(annotation_name= args.annotation_name)
 
 
 if __name__ == '__main__':
+    
+    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+    sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    tf.compat.v1.keras.backend.set_session(sess)
+    
     main()
