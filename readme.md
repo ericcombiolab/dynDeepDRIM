@@ -14,9 +14,10 @@ Zenodo: The normalized datasets used in dynDeepDRIM can be downloaded from [**li
 *******
 
 ## Benchmark
-* Benchmark for the simulation are avaliable from [**link**](https://github.com/yuxu-1/dynDeepDRIM/tree/master/DB_pairs_TF_gene).
-* Benchmark for mESC and hESC datasets are avaliable from [**link**](https://github.com/yuxu-1/dynDeepDRIM/tree/master/DB_pairs_TF_gene) (based on https://github.com/xiaoyeye/TDL).  
-* Benchmark for gene functional annotation, the gene sets are avaliable from [**link**](https://github.com/yuxu-1/dynDeepDRIM/tree/master/DB_func_annotation), downloaded from [**Gene Ontology**](https://www.gsea-msigdb.org/gsea/index.jsp) (GO:0050890 (cognition), GO:0007600 (sensory perception), GO:0099536 (synaptic signaling), and GO:0030424 (axon)).
+* Benchmark gene pairs for the simulation are avaliable from [**link**](https://github.com/yuxu-1/dynDeepDRIM/tree/master/DB_pairs_TF_gene).
+* Benchmark gene pairs for mESC and hESC datasets are avaliable from [**link**](https://github.com/yuxu-1/dynDeepDRIM/tree/master/DB_pairs_TF_gene) (based on https://github.com/xiaoyeye/TDL).  
+* Benchmark gene pairs for gene functional annotation are avaliable from [**link**](https://github.com/yuxu-1/dynDeepDRIM/tree/master/DB_func_annotation). 
+The [gene sets](https://github.com/yuxu-1/dynDeepDRIM/tree/master/Utility_folder/GO_Genes) downloaded from [**Gene Ontology**](https://www.gsea-msigdb.org/gsea/index.jsp) (GO:0050890 (cognition), GO:0007600 (sensory perception), GO:0099536 (synaptic signaling), and GO:0030424 (axon)).
 
 *******
 
@@ -38,7 +39,7 @@ conda activate dynDeepDRIM
 ## TASK1: TF-gene interactions inference for GRN reconstruction
 
 ### STEP1: Input tensors generation
-#### Python script: generate_input_tfgene.py
+#### Python script: `generate_input_tfgene.py`
 Example of the command line:
 ``` bash
 python generate_input_tfgene.py -out_dir /tmp/csyuxu/hesc1_input_tensors -expr_file /tmp/csyuxu/data/hesc1_expression_data -pairs_for_predict_file ./DB_pairs_TF_gene/hesc1_gene_pairs_400.txt -geneName_map_file ./DB_pairs_TF_gene/hesc1_gene_list_ref.txt -TF_divide_pos_file ./DB_pairs_TF_gene/hesc1_gene_pairs_400_num.txt -TF_num 36 -n_timepoints 5 -top_num 10 -image_resolution 8
@@ -53,7 +54,7 @@ python generate_input_tfgene.py -out_dir /tmp/csyuxu/hesc1_input_tensors -expr_f
 * -neighbor_criteria: The option of selecting correlation (corr) or covariance (cov) as measure for neighbor genes identification.
 * -get_abs: Absolute the values of correlation/covariance in "neighbor_criteria"? Set True to enable it; Ignore this param to disable it.
 * -top_num: The number of neighbor genes to be involved, default 10.
-* -image_resolution: integer, default 8. 
+* -image_resolution: Integer, default 8. 
 
 Example output:
 + x file: The input tensors of dynDeepDRIM. Shape: (n_samples, 2*top_num+3, n_timepoints, image_resolution, image_resolution)
@@ -62,8 +63,8 @@ Example output:
 
 
 ### STEP2: Model evaluation by cross-validation
-*Support n-fold cross-validation*
-#### Python script: fold_divide_ByTF.py
+*Supporting n-fold cross-validation*
+#### Python script: `fold_divide_ByTF.py`
 Example of the command line:
 ``` bash
 python fold_divide_ByTF.py -pos_filepath ./DB_pairs_TF_gene/hesc1_gene_pairs_400_num.txt -save_dir /home/comp/csyuxu/dynDeepDRIM -out_filename hesc1_cross_validation_fold_divide -n_folds 3
@@ -76,7 +77,7 @@ python fold_divide_ByTF.py -pos_filepath ./DB_pairs_TF_gene/hesc1_gene_pairs_400
 Example output:
 + 'out_filename'.txt: The indexes represent the order of TFs in the gene pairs file.
 
-#### Python script: dynDeepDRIM_TF_gene.py
+#### Python script: `dynDeepDRIM_TF_gene.py`
 Example of the command line:
 ``` bash
 CUDA_VISIBLE_DEVICES=2 python dynDeepDRIM_TF_gene.py -num_batches 36 -data_path /tmp/csyuxu/hesc1_input_tensors/v_dynDeepDRIM/ -output_dir tfgene_test -cross_validation_fold_divide_file ./DB_pairs_TF_gene/hesc1_cross_validation_fold_divide.txt
@@ -90,7 +91,7 @@ CUDA_VISIBLE_DEVICES=2 python dynDeepDRIM_TF_gene.py -num_batches 36 -data_path 
 
 ## TASK2: Gene functional annotataion
 ### STEP1: Generating input tensor for dynDeepDRIM 
-#### python script: generate_input_funcassign.py
+#### python script: `generate_input_funcassign.py`
 Example of the command line:
 ``` bash
 python generate_input_funcassign.py -genepairs_filepath ./DB_func_annotation/sensory_perception_gene_pairs_train.txt -expression_filepath /tmp/csyuxu/data/mouse_cortex -func_geneset_filepath ./DB_func_annotation/sensory_perception_known_gene.npy -random_geneset_filepath ./DB_func_annotation/sensory_perception_unknown_gene.npy -n_timepoints 3 -save_dir /home/comp/csyuxu/dynDeepDRIM/func_input_tensors -save_filename sensory_perception_train -neighbor_criteria cov -image_resolution 8 -top_num 1
@@ -99,33 +100,51 @@ python generate_input_funcassign.py -genepairs_filepath ./DB_func_annotation/sen
 ```
 + -genepairs_filepath: The file of the gene pairs and their labels (each row: geneA geneB label). e.g., [sensory_perception_gene_pairs_train.txt](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_func_annotation/sensory_perception_gene_pairs_train.txt)
 + -expression_filepath: The file of the normalized scRNA-seq gene expression profile, which the rows represent cells and the columns represent genes.   
-+ -func_geneset_filepath: The functional genes from GO and expressed in the scRNA-seq dataset. The neighbor genes will exclude these genes. e.g., [sensory_perception_known_gene.npy](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_func_annotation/sensory_perception_known_gene.npy).
-+ -random_geneset_filepath: The randomly selected genes that expressed in the scRNA-seq dataset (excluded the functional genes). e.g., [sensory_perception_unknown_gene.npy](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_func_annotation/sensory_perception_unknown_gene.npy).
++ -func_geneset_filepath: The file of functional genes from GO and expressed in the scRNA-seq dataset. The neighbor genes will exclude these genes. e.g., [sensory_perception_known_gene.npy](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_func_annotation/sensory_perception_known_gene.npy).
++ -random_geneset_filepath: The file of randomly selected genes that expressed in the scRNA-seq dataset (excluded the functional genes). e.g., [sensory_perception_unknown_gene.npy](https://github.com/yuxu-1/dynDeepDRIM/blob/master/DB_func_annotation/sensory_perception_unknown_gene.npy).
 + -n_timepoints: The number of time points in the time-course scRNA-seq dataset.  
 + -save_dir: The path of output files.   
 + -save_filename: The name of output files.
 + -neighbor_criteria: The option of selecting correlation (corr) or covariance (cov) as measure for neighbor genes identification.
 + -get_abs: Absolute the values of correlation/covariance in "neighbor_criteria"? Set True to enable it; Ignore this param to disable it.
 + -top_num: The number of neighbor genes to be involved, default 10.
-+ -image_resolution: integer, default 8. 
++ -image_resolution: Integer, default 8. 
 
 Example output:  
 + 'save_filename'.npy: The input tensors of dynDeepDRIM. Shape: (n_samples, 2*top_num+3, n_timepoints, image_resolution, image_resolution)
 
+Note:
++ [A simple python script](https://github.com/yuxu-1/dynDeepDRIM/blob/master/Utility_folder/Gene_pairs_generation_for_functionalAnnotation/function_assign_dataprocess.py) is provided for user using own functional gene set (group/module) to generate the gene pairs of training/validation/test.
 
 ### STEP2: Train and test the model 
-Before training the model, please make sure both training and test sets input tensors were generated.  
-  
-#### python script: dynDeepDRIM_func_annotation.py
+
+#### python script: `dynDeepDRIM_func_annotation.py`
 Example of the command line:
 ``` bash
-python3 dynDeepDRIM_func_annotation.py -train_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_train.npy -test_data_path /home/comp/jxchen/xuyu/dynDeepDRIM/func_annotation_input_tensors/immune_test.npy -output_dir Result_annotation -count_set_path /home/comp/jxchen/xuyu/dynDeepDRIM/DB_func_annotation/immune_count_set_test.txt -annotation_name immune
+CUDA_VISIBLE_DEVICES=1 python dynDeepDRIM_func_annotation.py -train_data_path /home/comp/csyuxu/dynDeepDRIM/func_tensor_test/sensory_perception_train.npy -test_data_path /home/comp/csyuxu/dynDeepDRIM/func_tensor_test/sensory_perception_test.npy -val_data_path /home/comp/csyuxu/dynDeepDRIM/func_tensor_test/sensory_perception_val.npy -output_dir func_test -count_set_path /home/comp/csyuxu/dynDeepDRIM/code/DB_func_annotation/sensory_perception_count_set_test.txt -annotation_name sensory_perception
 ```
-+ -train_data_path : The paht of the training input tensors generated in Step1.  
-+ -test_data_path: The paht of the test input tensors generated in Step1.    
-+ -output_dir: Indicate the path for output.     
-+ -count_set_path: For calculating and collecting AUROCs of each g1(first gene in gene pairs) to assess the performance of the model. 
++ -train_data_path : The file of the training input tensors generated in STEP1.  
++ -test_data_path: The file of the test input tensors generated in STEP1. Users can just implement model training by ignore this param.    
++ -val_data_path: The file of the validation input tensors generated in STEP1.    
++ -output_dir: The path of output files.     
++ -count_set_path: For calculating AUROCs of each functional gene used to annotate other genes. IF test_data_path is None, ignore this param too.
 + -annotation_name: The name of result folder 
+
+
+### STEP3 (optional): test the model 
+*use trained model to annotate gene function*
+#### python script: `dynDeepDRIM_annotating_genes.py`
+Example of the command line:
+``` bash
+python dynDeepDRIM_annotating_genes.py -trained_model_path ./func_test/sensory_perception -test_data_path /home/comp/csyuxu/dynDeepDRIM/func_tensor_test/sensory_perception_test.npy -output_dir func_test_trainedModel -annotation_name sensory_perception
+```
++ -trained_model_path: The path of trained model (.h5 file).
++ -test_data_path: The file of test gene pairs (tensors)
++ -output_dir: The path of output files.
++ -annotation_name: The name of result folder 
+
+Example output:  
++ y_predict.csv: The file of predicted scores for each gene pair (tensor)
 
 ******
 
